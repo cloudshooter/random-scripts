@@ -17,8 +17,8 @@ def process_file(input_file, output_file):
             if count % step == 0 and count < len(host_set) and index < len(host_set) - 1:
                 file.write("===========\n")
 
-        # Insert separator if the number of values is not evenly divisible by 3
-        if len(host_set) % 3 != 0:
+        # Insert separator if there are more than two sections
+        if len(host_set) // step > 2:
             file.write("===========\n")
 
     # Print the number of items in the list divided by 3
