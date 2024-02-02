@@ -15,6 +15,12 @@ def process_file(input_file, output_file):
         cleaned_value = value.split(':')[0].strip()
         columns[index % 3].append(cleaned_value)
 
+    # Add empty values to columns to account for the remaining values
+    remainder = len(host_set) % 3
+    if remainder > 0:
+        for i in range(3 - remainder):
+            columns[i].append('')
+
     # Write processed data to the output CSV file
     with open(output_file, 'w', newline='') as csvfile:
         csvwriter = csv.writer(csvfile)
