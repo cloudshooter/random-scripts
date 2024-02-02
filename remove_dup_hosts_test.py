@@ -13,7 +13,7 @@ def process_file(input_file, output_file):
             cleaned_value = value.split(':')[0].strip()
             file.write(cleaned_value + '\n')
             count += 1
-            # Insert separator after every 1/3 and 2/3 of the values, excluding the last iteration
+            # Insert separator at the 1/3 and 2/3 marks, excluding the last iteration
             if count % step == 0 and count < len(host_set) and count < step * 2:
                 file.write("===========\n")
 
