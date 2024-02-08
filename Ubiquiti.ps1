@@ -36,6 +36,12 @@ Function Get-UnifiSites ($session, $controller, $port) {
     return $response.data
 }
 
+#Function to get clients
+Function Get-UnifiClients ($session, $controller, $port, $site_id) {
+    $uri = 'https://{0}:{1}/api/s/{2}/stat/sta' -f $controller, $port, $site_id
+    $response = Invoke-RestMethod -Uri $uri -Method Get -WebSession $session
+    return $response.data
+}
 
 
 $session = Login-Unifi -controller $controller -username $username -password $password -port $port
@@ -57,5 +63,23 @@ foreach ($site in $sites) {
     }
 }
 
+# Empty array to hold our client data
+$clientData = @()
+
+foreach ($site in $sites) {
+    ...
+    $clients = Get-UnifiClients -session $session -controller $controller -port $port -site_id $site.name
+    foreach ($client in $clients) {
+        $clientData += New-Object PSObject -Property @{
+            "Site Name" = $site.desc
+            "Client Name" = $client.name
+            "IP Address" = $client.ip
+            "MAC Address" = $client.mac
+            "Last Seen" = $client.last_seen
+            "Device" = "Ubiquiti " + $client.device
+        }
+    }
+}
 # Output the data to a CSV file
 $deviceData | Export-Csv -Path $env:USERPROFILE\Desktop\unifi_devices.csv -NoTypeInformation
+$clientData | Export-Csv -Path $env:USERPROFILE\Desktop\clients.csv -NoTypeInformation
