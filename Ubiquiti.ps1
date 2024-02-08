@@ -67,7 +67,6 @@ foreach ($site in $sites) {
 $clientData = @()
 
 foreach ($site in $sites) {
-    ...
     $clients = Get-UnifiClients -session $session -controller $controller -port $port -site_id $site.name
     foreach ($client in $clients) {
         $clientData += New-Object PSObject -Property @{
