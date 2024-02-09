@@ -43,6 +43,12 @@ Function Get-UnifiClients ($session, $controller, $port, $site_id) {
     return $response.data
 }
 
+#Function to get Networks
+Function Get-UnifiNetworks ($session, $controller, $port, $site_id) {
+    $uri = "https://{0}:{1}/api/s/{2}/rest/networkconf" -f $controller, $port, $site_id
+    $response = Invoke-RestMethod -Uri $uri -Method Get -WebSession $session
+    return $response.data
+}
 
 $session = Login-Unifi -controller $controller -username $username -password $password -port $port
 $sites = Get-UnifiSites -session $session -controller $controller -port $port
@@ -79,6 +85,21 @@ foreach ($site in $sites) {
         }
     }
 }
+
+# Empty array to hold our network data
+$networkData = @()
+
+foreach ($site in $sites) {
+    $networks = Get-UnifiNetworks -session $session -controller $controller -port $port -site_id $site.name
+    foreach ($network in $networks) {
+        $networkData += New-Object PSObject -Property @{
+            "Site Name" = $site.desc
+            "Network Name" = $network.name 
+            "Subnet" = $network.subnet
+        }
+    }
+}
 # Output the data to a CSV file
 $deviceData | Export-Csv -Path $env:USERPROFILE\Desktop\unifi_devices.csv -NoTypeInformation
 $clientData | Export-Csv -Path $env:USERPROFILE\Desktop\clients.csv -NoTypeInformation
+$networkData | Export-Csv -Path $env:USERPROFILE\Desktop\networks.csv -NoTypeInformation
