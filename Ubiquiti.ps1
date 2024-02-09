@@ -95,7 +95,7 @@ foreach ($site in $sites) {
         $networkData += New-Object PSObject -Property @{
             "Site Name" = $site.desc
             "Network Name" = $network.name 
-            "Subnet" = $network.subnet
+            "Subnet" = $network.ip_subnet
         }
     }
 }
