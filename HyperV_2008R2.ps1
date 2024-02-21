@@ -17,8 +17,8 @@ $report += "<p>Processors: $(($processors | Measure-Object).Count)</p>"
 $report += "<p>Logical Disks: $(($disks | Measure-Object).Count)</p>"
 $report += "<p>IPEnabled Network Adapters: $(($networks | Measure-Object).Count)</p>"
 
-# Get VM information
-$vms = Get-WmiObject -Namespace root\virtualization -Class Msvm_ComputerSystem -Filter "elementtype = 2"
+# Get VM information without the filter
+$vms = Get-WmiObject -Namespace root\virtualization -Class Msvm_ComputerSystem
 
 # Write VM information to report
 foreach ($vm in $vms)
