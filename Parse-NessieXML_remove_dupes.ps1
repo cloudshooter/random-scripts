@@ -134,10 +134,9 @@ Function Create-Report {
     
     $PreviousPluginID = 0
     $CurrentVulnCount = 0
-    $CurrentAssetCount = 0
-    $CurrentAssetsCol1 = [System.Collections.ArrayList]::new()
-    $CurrentAssetsCol2 = [System.Collections.ArrayList]::new()
-    $CurrentAssetsCol3 = [System.Collections.ArrayList]::new()
+    $CurrentAssetsCol1 = @{}
+    $CurrentAssetsCol2 = @{}
+    $CurrentAssetsCol3 = @{}
     
     ForEach($Item in $SortedData) {
         # If different than previous vuln, finish previous table and create new
@@ -145,15 +144,14 @@ Function Create-Report {
             # FINISH PREVIOUS TABLE (IF NOT FIRST VULN)
             if($CurrentVulnCount -ne 0) {
                 $CurrentTable = $Document.Tables[$Document.Tables.Count]
-                $CurrentTable.Cell(2,2).Range.Text = [String]$CurrentAssetCount
-                $CurrentTable.Cell(7,1).Range.Text = $CurrentAssetsCol1 -Join "`v"
-                $CurrentTable.Cell(7,2).Range.Text = $CurrentAssetsCol2 -Join "`v"
-                $CurrentTable.Cell(7,3).Range.Text = $CurrentAssetsCol3 -Join "`v"
+                $CurrentTable.Cell(2,2).Range.Text = [String]($CurrentAssetsCol1.Keys.Count + $CurrentAssetsCol2.Keys.Count + $CurrentAssetsCol3.Keys.Count)
+                $CurrentTable.Cell(7,1).Range.Text = $CurrentAssetsCol1.Keys -join "`v"
+                $CurrentTable.Cell(7,2).Range.Text = $CurrentAssetsCol2.Keys -join "`v"
+                $CurrentTable.Cell(7,3).Range.Text = $CurrentAssetsCol3.Keys -join "`v"
                 
                 $CurrentAssetsCol1.Clear()
                 $CurrentAssetsCol2.Clear()
                 $CurrentAssetsCol3.Clear()
-                $CurrentAssetCount = 0
             }
             
             # CREATE NEW TABLE
@@ -185,47 +183,22 @@ Function Create-Report {
             $PreviousPluginID = $Item.pluginID
         }
         
-        # Add Asset to Column array to later populate table
-        $CurrentAssetCount++
-        
+        # Add Asset to Column hashtable to later populate table
         $name = $Item.HostIP
         if($Item.Port -ne 0) {
             $name += ':' + $Item.Port
         }
         
-        # Check if the asset already exists in any of the arrays
-        $assetExists = $false
-        foreach ($asset in $CurrentAssetsCol1) {
-            if ($asset -eq $name) {
-                $assetExists = $true
-                break
+        # Check if the asset already exists in any of the hashtables
+        if (-not $CurrentAssetsCol1.ContainsKey($name) -and -not $CurrentAssetsCol2.ContainsKey($name) -and -not $CurrentAssetsCol3.ContainsKey($name)) {
+            if($CurrentAssetsCol1.Keys.Count -lt $CurrentAssetsCol2.Keys.Count) {
+                $CurrentAssetsCol1[$name] = $null
             }
-        }
-        
-        foreach ($asset in $CurrentAssetsCol2) {
-            if ($asset -eq $name) {
-                $assetExists = $true
-                break
-            }
-        }
-        
-        foreach ($asset in $CurrentAssetsCol3) {
-            if ($asset -eq $name) {
-                $assetExists = $true
-                break
-            }
-        }
-        
-        # If asset doesn't exist, add it to the array
-        if (-not $assetExists) {
-            if($CurrentAssetCount % 3 -eq 1) {
-                $CurrentAssetsCol1.Add($name) | Out-Null
-            }
-            elseif($CurrentAssetCount % 3 -eq 2) {
-                $CurrentAssetsCol2.Add($name) | Out-Null
+            elseif($CurrentAssetsCol2.Keys.Count -lt $CurrentAssetsCol3.Keys.Count) {
+                $CurrentAssetsCol2[$name] = $null
             }
             else {
-                $CurrentAssetsCol3.Add($name) | Out-Null
+                $CurrentAssetsCol3[$name] = $null
             }
         }
         
@@ -242,10 +215,10 @@ Function Create-Report {
     
     # COMPLETE LAST TABLE
     $CurrentTable = $Document.Tables[$Document.Tables.Count]
-    $CurrentTable.Cell(2,2).Range.Text = [String]$CurrentAssetCount
-    $CurrentTable.Cell(7,1).Range.Text = $CurrentAssetsCol1 -Join "`v"
-    $CurrentTable.Cell(7,2).Range.Text = $CurrentAssetsCol2 -Join "`v"
-    $CurrentTable.Cell(7,3).Range.Text = $CurrentAssetsCol3 -Join "`v"
+    $CurrentTable.Cell(2,2).Range.Text = [String]($CurrentAssetsCol1.Keys.Count + $CurrentAssetsCol2.Keys.Count + $CurrentAssetsCol3.Keys.Count)
+    $CurrentTable.Cell(7,1).Range.Text = $CurrentAssetsCol1.Keys -join "`v"
+    $CurrentTable.Cell(7,2).Range.Text = $CurrentAssetsCol2.Keys -join "`v"
+    $CurrentTable.Cell(7,3).Range.Text = $CurrentAssetsCol3.Keys -join "`v"
     
     $Selection.Style = "Heading 2"
     $Selection.TypeText("Totals")
