@@ -193,30 +193,28 @@ Function Create-Report {
     # Add Asset to Column array to later populate table
     $name = $Item.HostIP
 
-    if ($CurrentHosts.Add($name)) {
-        if($CurrentAssetCount % 3 -eq 1) {
-            $CurrentAssets
-                            $CurrentAssetsCol1.Add($name) | Out-Null
-                $CurrentAssetCount++
-            }
-            elseif($CurrentAssetCount % 3 -eq 2) {
-                $CurrentAssetsCol2.Add($name) | Out-Null
-                $CurrentAssetCount++
-            }
-            else {
-                $CurrentAssetsCol3.Add($name) | Out-Null
-                $CurrentAssetCount++
-            }
-        }
-        
-        # Update Total counts for summary report
-        switch ($Item.risk_factor) {
-            'Low'      { $TotalLow++; break}
-            'Medium'   { $TotalMedium++; break }
-            'High'     { $TotalHigh++; break }
-            'Critical' { $TotalCritical++; break }
-        }
-        
+if ($CurrentHosts.Add($name)) {
+    if($CurrentAssetCount % 3 -eq 1) {
+        $CurrentAssetsCol1.Add($name) | Out-Null
+        $CurrentAssetCount++
+    }
+    elseif($CurrentAssetCount % 3 -eq 2) {
+        $CurrentAssetsCol2.Add($name) | Out-Null
+        $CurrentAssetCount++
+    }
+    else {
+        $CurrentAssetsCol3.Add($name) | Out-Null
+        $CurrentAssetCount++
+    }
+
+    # Update Total counts for summary report inside the "if" block
+    switch ($Item.risk_factor) {
+        'Low'      { $TotalLow++; break}
+        'Medium'   { $TotalMedium++; break }
+        'High'     { $TotalHigh++; break }
+        'Critical' { $TotalCritical++; break }
+    }
+}
         Display-Progress -Index $SortedData.IndexOf($Item) -Total $SortedData.Count
     }
     
