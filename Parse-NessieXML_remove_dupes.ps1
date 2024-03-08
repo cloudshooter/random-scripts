@@ -4,7 +4,7 @@ Param(
     $XmlPath
 )
 
-GLOBAL VARIABLES
+#GLOBAL VARIABLES
 $TableCellColorHeaderMain = 0x00C0FF
 $TableCellColorHeaderChild = 0x595959
 $TableCellColorContent = 0xD9D9D9
