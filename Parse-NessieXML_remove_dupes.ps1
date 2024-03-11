@@ -73,10 +73,8 @@ Function Display-Progress {
 }
 
 Function Create-Report {
-    $UniqueCritical = 0
-    $UniqueHigh = 0
-    $UniqueMedium = 0
-    $UniqueLow = 0
+    $TotalCritical = $TotalHigh = $TotalMedium = $TotalLow = 0
+    $UniqueCritical = $UniqueHigh = $UniqueMedium = $UniqueLow = 0
 
     $ProcessedPluginIDsCritical = New-Object System.Collections.Generic.HashSet[int]
     $ProcessedPluginIDsHigh = New-Object System.Collections.Generic.HashSet[int]
@@ -92,108 +90,97 @@ Function Create-Report {
     $CurrentHosts = New-Object System.Collections.Generic.HashSet[string]
 
     ForEach($Item in $SortedData) {
-        # If different than previous vuln, finish previous table and create new
-        if ($Item.pluginID -ne $PreviousPluginID) {
-            # FINISH PREVIOUS TABLE (IF NOT FIRST VULN)
-            if ($CurrentVulnCount -ne 0) {
-                $CurrentTable = $Document.Tables[$Document.Tables.Count]
-                $CurrentTable.Cell(2, 2).Range.Text = [String]$CurrentAssetCount
-                $CurrentTable.Cell(7, 1).Range.Text = $CurrentAssetsCol1 -join "`v"
-                $CurrentTable.Cell(7, 2).Range.Text = $CurrentAssetsCol2 -join "`v"
-                $CurrentTable.Cell(7, 3).Range.Text = $CurrentAssetsCol3 -join "`v"
-                
-                $CurrentAssetsCol1.Clear()
-                $CurrentAssetsCol2.Clear()
-                $CurrentAssetsCol3.Clear()
-                $CurrentAssetCount = 0
-                $CurrentHosts.Clear()
+        if($Item.pluginID -ne $PreviousPluginID) {
+            if($CurrentVulnCount -ne 0) {
+                # Finalize previous table if not first vuln
+                Finalize-CurrentTable
             }
-            
-            # CREATE NEW TABLE
+
+            # New vuln; setup
             $CurrentVulnCount++
-            $Selection.Style = "Heading 2"
-            $Selection.Range.ListFormat.ApplyNumberDefault()
-            $Selection.Range.ListFormat.ListOutdent()
-            $Selection.TypeText($Item.pluginName)
-            $Selection.TypeParagraph()
-            
-            # Create table and get object        
-            Create-Table
-            $CurrentTable = $Document.Tables[$Document.Tables.Count]
-            
-            # Add content to table and format
-            $CurrentTable.Cell(2, 1).Range.Text = $Item.risk_factor
-            $CurrentTable.Cell(3, 1).Range.Text = $Item.description
-            $CurrentTable.Cell(5, 1).Range.Text = $Item.Solution
-            
-            # Format table based on severity
-            switch ($Item.risk_factor) {
-                'Low'      { $CurrentTable.Cell(2, 1).Shading.BackgroundPatternColor = $TableCellColorLow; break}
-                'Medium'   { $CurrentTable.Cell(2, 1).Shading.BackgroundPatternColor = $TableCellColorMedium; break }
-                'High'     { $CurrentTable.Cell(2, 1).Shading.BackgroundPatternColor = $TableCellColorHigh; break }
-                'Critical' { $CurrentTable.Cell(2, 1).Shading.BackgroundPatternColor = $TableCellColorCritical; break }
-            }
-            
-            # Update PluginID flag for next round
+            Setup-NewTable $Item
             $PreviousPluginID = $Item.pluginID
         }
-        
-        # Add Asset to Column array to later populate table
+
+        # Process current item
         $name = $Item.HostIP
-
-        if ($CurrentHosts.Add($name)) {
-            # Left to right fill order
-            $columnIndex = $CurrentAssetCount % 3
-            switch ($columnIndex) {
-                0 { $CurrentAssetsCol1.Add($name) | Out-Null }
-                1 { $CurrentAssetsCol2.Add($name) | Out-Null }
-                2 { $CurrentAssetsCol3.Add($name) | Out-Null }
-            }
-            $CurrentAssetCount++
-
-            # Update Total counts for summary report inside the "if" block
-            switch ($Item.risk_factor) {
-                'Low' {
-                    if ($ProcessedPluginIDsLow.Add($Item.pluginID)) { $UniqueLow++ }
-                    break
-                }
-                'Medium' {
-                    if ($ProcessedPluginIDsMedium.Add($Item.pluginID)) { $UniqueMedium++ }
-                    break
-                }
-                'High' {
-                    if ($ProcessedPluginIDsHigh.Add($Item.pluginID)) { $UniqueHigh++ }
-                    break
-                }
-                'Critical' {
-                    if ($ProcessedPluginIDsCritical.Add($Item.pluginID)) { $UniqueCritical++ }
-                    break
-                }
-            }
+        if($CurrentHosts.Add($name)) {
+            Update-AssetColumns $name
+            Update-SeverityCounts $Item
         }
-        Display-Progress -Index $SortedData.IndexOf($Item) -Total $SortedData.Count
     }
-    
-    # COMPLETE LAST TABLE
-    if ($CurrentVulnCount -ne 0) {
-        $CurrentTable = $Document.Tables[$Document.Tables.Count]
-        $CurrentTable.Cell(2, 2).Range.Text = [String]$CurrentAssetCount
-        $CurrentTable.Cell(7, 1).Range.Text = $CurrentAssetsCol1 -join "`v"
-        $CurrentTable.Cell(7, 2).Range.Text = $CurrentAssetsCol2 -join "`v"
-        $CurrentTable.Cell(7, 3).Range.Text = $CurrentAssetsCol3 -join "`v"
+
+    # Complete processing of last item
+    if($CurrentVulnCount -ne 0) {
+        Finalize-CurrentTable
     }
-    
-    # Display unique severity counts
+
+    # Display totals
+    Display-Totals
+}
+
+Function Finalize-CurrentTable {
+    $CurrentTable = $Document.Tables[$Document.Tables.Count]
+    $CurrentTable.Cell(2, 2).Range.Text = [String]$CurrentAssetCount
+    Populate-AssetColumns
+    Clear-CurrentAssetData
+}
+
+Function Setup-NewTable($Item) {
     $Selection.Style = "Heading 2"
-    $Selection.TypeText("Totals")
+    $Selection.TypeText($Item.pluginName)
     $Selection.TypeParagraph()
-    $Selection.TypeText("Unique Critical: $UniqueCritical")
+    Create-Table
+    $CurrentTable = $Document.Tables[$Document.Tables.Count]
+    Configure-CurrentTable $Item
+}
+
+Function Update-AssetColumns($name) {
+    $columnIndex = $CurrentAssetCount % 3
+    switch($columnIndex) {
+        0 { $CurrentAssetsCol1.Add($name) | Out-Null }
+        1 { $CurrentAssetsCol2.Add($name) | Out-Null }
+        2 { $CurrentAssetsCol3.Add($name) | Out-Null }
+    }
+    $CurrentAssetCount++
+}
+
+Function Update-SeverityCounts($Item) {
+    # Update Total counts
+    switch ($Item.risk_factor) {
+        'Low'      { $TotalLow++ if ($ProcessedPluginIDsLow.Add($Item.pluginID)) { $UniqueLow++ } }
+        'Medium'   { $TotalMedium++ if ($ProcessedPluginIDsMedium.Add($Item.pluginID)) { $UniqueMedium++ } }
+        'High'     { $TotalHigh++ if ($ProcessedPluginIDsHigh.Add($Item.pluginID)) { $UniqueHigh++ } }
+        'Critical' { $TotalCritical++ if ($ProcessedPluginIDsCritical.Add($Item.pluginID)) { $UniqueCritical++ } }
+    }
+}
+
+Function Clear-CurrentAssetData {
+    $CurrentAssetsCol1.Clear()
+    $CurrentAssetsCol2.Clear()
+    $CurrentAssetsCol3.Clear()
+    $CurrentAssetCount = 0
+    $CurrentHosts.Clear()
+}
+
+Function Populate-AssetColumns {
+    $CurrentTable.Cell(7, 1).Range.Text = $CurrentAssetsCol1 -join "`v"
+    $CurrentTable.Cell(7, 2).Range.Text = $CurrentAssetsCol2 -join "`v"
+    $CurrentTable.Cell(7, 3).Range.Text = $CurrentAssetsCol3 -join "`v"
+}
+
+Function Configure-CurrentTable($Item) {
+    # Configure table based on severity and fill in fixed fields
+}
+
+Function Display-Totals {
+    $Selection.TypeText("Total Critical: $TotalCritical`nUnique Critical: $UniqueCritical")
     $Selection.TypeParagraph()
-    $Selection.TypeText("Unique High: $UniqueHigh")
+    $Selection.TypeText("Total High: $TotalHigh`nUnique High: $UniqueHigh")
     $Selection.TypeParagraph()
-    $Selection.TypeText("Unique Medium: $UniqueMedium")
+    $Selection.TypeText("Total Medium: $TotalMedium`nUnique Medium: $UniqueMedium")
     $Selection.TypeParagraph()
-    $Selection.TypeText("Unique Low: $UniqueLow")
+    $Selection.TypeText("Total Low: $TotalLow`nUnique Low: $UniqueLow")
     $Selection.TypeParagraph()
     $Selection.TypeText("Unique Vulns: $CurrentVulnCount")
 }
